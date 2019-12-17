@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8082" doc:name="HTTP Listener Configuration"/>
+    <spring:beans>
+        <spring:bean id="MineClass" name="myClass" class="myfirst.MyClass"/>
+    </spring:beans>
+    <db:mysql-config name="MySQL_Configuration" host="root@localhost" port="3306" user="root" password="root" database="training" doc:name="MySQL Configuration"/>
+    <http:listener-config name="HTTP_Listener_Configuration1" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <flow name="jsonToObject">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/getObject" allowedMethods="GET" doc:name="HTTP"/>
+        
+        <invoke object-ref="MineClass" method="myNamed" doc:name="Invoke"  />
+        <json:object-to-json-transformer returnClass="#" doc:name="Object to JSON"/>
+    </flow>
+    <flow name="jsonToXml">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/convertXml" doc:name="HTTP"/>
+        <db:select config-ref="MySQL_Configuration" doc:name="Database">
+            <db:parameterized-query><![CDATA[select * from tutorials_tbl ;]]></db:parameterized-query>
+        </db:select>
+        <dw:transform-message doc:name="Transform Message" metadata:id="f5775247-44b2-4b38-938d-910cb484ebb5">
+            <dw:input-payload doc:sample="sample_data\list_map_2.dwl"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/xml
+---
+{
+	root: {
+		(payload map (data,index) -> {
+			child: {
+				id: data.tutorial_id,
+				author: data.tutorial_author,
+				title: data.tutorial_title,
+				date: data.submission_date
+			}
+		})
+	}
+}]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+    <flow name="jsonToCsv">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/convertCSV" doc:name="Http"/>
+        <db:select config-ref="MySQL_Configuration" doc:name="Database">
+            <db:parameterized-query><![CDATA[select * from tutorials_tbl ;]]></db:parameterized-query>
+        </db:select>
+        <dw:transform-message doc:name="Transformer" metadata:id="f5775247-44b2-4b38-938d-910cb484ebb5">
+            <dw:input-payload doc:sample="sample_data\list_map_2.dwl"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/csv
+---
+payload map {
+	index:$$,
+	id: $.tutorial_id,
+	author: $.tutorial_author,
+	title: $.tutorial_title,
+	date: $.submission_date
+}]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+    <flow name="xmlToJson">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/xmlToJson" allowedMethods="POST" doc:name="HTTP"/>
+        <dw:transform-message doc:name="Transform Message" metadata:id="51f9c280-7b74-4883-af1a-d9dfbfb0d570">
+            <dw:input-payload doc:sample="data.json" mimeType="application/json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/dw
+---
+payload]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+    <flow name="Copy_of_jsonToObject">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/ObjToXml" allowedMethods="GET" doc:name="Copy_of_HTTP"/>
+        <invoke object-ref="MineClass" method="myNamed" doc:name="Copy_of_Invoke"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%var m = 'sats'
+%output application/xml
+---
+root: 
+	(data:payload)
+	 when payload == 'Sats2'
+]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+
+</mule>
